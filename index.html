@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selamat Hari Raya - Greeting Card Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/docx@7.8.2/build/index.umd.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a2920;
+            --bg-secondary: #0d3d2e;
+            --accent-gold: #d4a855;
+            --accent-light: #f0e6d3;
+            --text-light: #e8f5e9;
+            --text-muted: #a8c5b0;
+            --card-bg: rgba(13, 61, 46, 0.85);
+            --border-gold: rgba(212, 168, 85, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: var(--text-light);
+        }
+
+        .arabic-text {
+            font-family: 'Noto Naskh Arabic', 'Amiri', serif;
+            direction: rtl;
+        }
+
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(212, 168, 85, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(13, 61, 46, 0.9) 0%, transparent 50%),
+                        linear-gradient(180deg, rgba(10, 41, 32, 0.95) 0%, rgba(10, 41, 32, 1) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .main-content {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-gold);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .input-field {
+            background: rgba(10, 41, 32, 0.8);
+            border: 2px solid var(--border-gold);
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: var(--text-light);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 20px rgba(212, 168, 85, 0.3);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #b8943d 100%);
+            color: var(--bg-primary);
+            font-weight: 600;
+            padding: 14px 32px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(212, 168, 85, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 168, 85, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent-gold);
+            border: 2px solid var(--accent-gold);
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(212, 168, 85, 0.1);
+        }
+
+        .btn-action {
+            background: rgba(212, 168, 85, 0.15);
+            color: var(--accent-light);
+            border: 1px solid var(--border-gold);
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .btn-action:hover {
+            background: rgba(212, 168, 85, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 8px;
+            background: rgba(10, 41, 32, 0.6);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--border-gold);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #b8943d 100%);
+            color: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .live-clock {
+            font-size: 14px;
+            color: var(--accent-gold);
+            font-weight: 500;
+            font-family: 'Poppins', monospace;
+        }
+
+        .hijri-date {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .template-preview {
+            background: linear-gradient(135deg, rgba(10, 41, 32, 0.9) 0%, rgba(13, 61, 46, 0.9) 100%);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .template-preview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: rgba(10, 41, 32, 0.6);
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .toolbar-select {
+            background: rgba(10, 41, 32, 0.8);
+            border: 1px solid var(--border-gold);
+            color: var(--text-light);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .toolbar-select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .editable-field {
+            background: rgba(212, 168, 85, 0.1);
+            border: 1px dashed var(--accent-gold);
+            border-radius: 8px;
+            padding: 8px 16px;
+            min-width: 120px;
+            display: inline-block;
+            cursor: text;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: var(--accent-gold);
+        }
+
+        .editable-field:hover {
+            background: rgba(212, 168, 85, 0.2);
+        }
+
+        .editable-field:focus {
+            outline: none;
+            border-style: solid;
+            background: rgba(212, 168, 85, 0.25);
+        }
+
+        .moon-decoration {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle at 30% 30%, var(--accent-light) 0%, var(--accent-gold) 50%, transparent 70%);
+            border-radius: 50%;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            opacity: 0.3;
+            filter: blur(1px);
+        }
+
+        .star {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            animation: twinkle 2s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+
+        @media (max-width: 768px) {
+            .btn-action {
+                width: 100%;
+                text-align: center;
+            }
+            
+            .tab-btn {
+                font-size: 11px;
+                padding: 12px 8px;
+            }
+
+            .editor-toolbar {
+                justify-content: center;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-gold);
+            border-radius: 4px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.4s ease;
+            box-shadow: 0 10px 40px rgba(212, 168, 85, 0.4);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .template-text {
+            line-height: 1.8;
+            text-align: center;
+        }
+
+        .template-arabic {
+            font-family: 'Noto Naskh Arabic', 'Amiri', serif;
+            direction: rtl;
+            font-size: 1.5rem;
+            line-height: 2.2;
+            color: var(--accent-gold);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .template-arabic-closing {
+            font-family: 'Noto Naskh Arabic', 'Amiri', serif;
+            direction: rtl;
+            font-size: 1.5rem;
+            line-height: 2.2;
+            color: var(--accent-gold);
+            text-align: center;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .template-line {
+            margin-bottom: 0.8rem;
+        }
+
+        .highlight-text {
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+    <div class="bg-overlay"></div>
+
+    <div class="main-content">
+        <!-- Header -->
+        <header class="fixed top-0 left-0 right-0 z-50 p-4">
+            <div class="max-w-6xl mx-auto flex justify-between items-center">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                    <div class="live-clock" id="liveClock"></div>
+                    <div class="hijri-date" id="hijriDate"></div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <select id="langSelect" class="toolbar-select text-sm" aria-label="Select Language">
+                        <option value="id">Bahasa Indonesia</option>
+                        <option value="en">English</option>
+                        <option value="ja">日本語</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page 1: Welcome / Name Input -->
+        <div id="page1" class="page active">
+            <div class="min-h-screen flex items-center justify-center p-4 pt-20">
+                <div class="card max-w-lg w-full p-8 md:p-12 relative overflow-hidden">
+                    <div class="moon-decoration"></div>
+                    
+                    <div class="star" style="top: 30px; left: 40px; animation-delay: 0s;"></div>
+                    <div class="star" style="top: 60px; left: 80px; animation-delay: 0.5s;"></div>
+                    <div class="star" style="top: 40px; right: 60px; animation-delay: 1s;"></div>
+                    <div class="star" style="bottom: 80px; left: 30px; animation-delay: 1.5s;"></div>
+                    
+                    <div class="text-center mb-8">
+                        <h1 class="text-3xl md:text-4xl font-bold mb-4" style="color: var(--accent-gold);" data-translate="welcomeTitle">
+                            Selamat Datang
+                        </h1>
+                        <p class="text-lg opacity-80" data-translate="welcomeSubtitle">
+                            Buat kartu ucapan Lebaran yang personal
+                        </p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2 opacity-80" data-translate="yourName">
+                                NAMA KAMU
+                            </label>
+                            <input type="text" id="userName" class="input-field" 
+                                   placeholder="Masukkan nama lengkap Anda..." 
+                                   data-placeholder-id="namePlaceholder">
+                        </div>
+
+                        <button id="startBtn" class="btn-primary w-full" data-translate="startButton">
+                            Mulai Buat Kartu
+                        </button>
+                    </div>
+
+                    <div class="mt-8 text-center">
+                        <p class="text-xs opacity-50">
+                            Made with Komodo Mojokerto
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 2: Template Editor -->
+        <div id="page2" class="page">
+            <div class="min-h-screen p-4 pt-20 pb-12">
+                <div class="max-w-5xl mx-auto">
+                    <!-- Welcome Header -->
+                    <div class="card p-6 md:p-8 mb-6 relative overflow-hidden">
+                        <div class="moon-decoration" style="width: 60px; height: 60px;"></div>
+                        <div class="text-center">
+                            <h1 class="text-2xl md:text-4xl font-bold mb-2" style="color: var(--accent-gold);">
+                                Welcome "<span class="editable-field" contenteditable="true" id="displayName"></span>"
+                            </h1>
+                            <p class="text-sm opacity-60">Made with Komodo Mojokerto</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="tab-container mb-6">
+                        <button class="tab-btn active" data-tab="tab1" data-translate="tab1Title">
+                            TEMPLATE HARI RAYA IDUL FITRI
+                        </button>
+                        <button class="tab-btn" data-tab="tab2" data-translate="tab2Title">
+                            TEMPLATE HARI RAYA IDUL ADHA
+                        </button>
+                    </div>
+
+                    <!-- Tab 1: Idul Fitri -->
+                    <div id="tab1" class="tab-content active">
+                        <div class="card p-6 md:p-8">
+                            <!-- Editor Toolbar -->
+                            <div class="editor-toolbar mb-6">
+                                <select id="fontFamily1" class="toolbar-select" aria-label="Font Family">
+                                    <option value="Poppins">Poppins</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Amiri">Amiri (Arabic)</option>
+                                </select>
+                                <select id="fontSize1" class="toolbar-select" aria-label="Font Size">
+                                    <option value="12">12px</option>
+                                    <option value="14">14px</option>
+                                    <option value="16" selected>16px</option>
+                                    <option value="18">18px</option>
+                                    <option value="20">20px</option>
+                                    <option value="24">24px</option>
+                                </select>
+                                <select id="fontWeight1" class="toolbar-select" aria-label="Font Weight">
+                                    <option value="400">Regular</option>
+                                    <option value="500">Medium</option>
+                                    <option value="600">Semi Bold</option>
+                                    <option value="700">Bold</option>
+                                </select>
+                                <select id="fontStyle1" class="toolbar-select" aria-label="Font Style">
+                                    <option value="normal">Normal</option>
+                                    <option value="italic">Italic</option>
+                                </select>
+                            </div>
+
+                            <!-- Template Preview -->
+                            <div class="template-preview" id="template1Preview">
+                                <div id="template1Content" class="template-text">
+                                    <!-- Arabic Opening -->
+                                    <p class="template-arabic">
+                                        السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ
+                                    </p>
+
+                                    <p class="template-line" data-translate="weFamily">
+                                        Kami sekeluarga turut mengucapkan:
+                                    </p>
+
+                                    <p class="template-line highlight-text">
+                                        Taqobbalaahu Minna Wa Minkum Taqobbal Yaa Kariim.
+                                    </p>
+
+                                    <p class="template-line">
+                                        <span data-translate="happyEidFitri">Selamat Hari Raya Idul Fitri</span> 
+                                        "<span class="editable-field" contenteditable="true" id="hijriDate1"></span>"
+                                    </p>
+
+                                    <p class="template-line highlight-text">
+                                        Minal 'Aidin Wal Faizin.
+                                    </p>
+
+                                    <p class="template-line" data-translate="askForgiveness">
+                                        Mohon maaf lahir & batin.
+                                    </p>
+
+                                    <p class="template-line" data-translate="forgivenessTextFitri">
+                                        Atas segala khilaf & salah kami, baik yang disengaja maupun tidak disengaja, semoga puasa kita diterima Allah swt dan diberi kesempatan bisa bertemu Romadhon mendatang.
+                                    </p>
+
+                                    <p class="template-line highlight-text">
+                                        Aamiin Yaa Robbal'aalamiin
+                                    </p>
+
+                                    <!-- Arabic Closing - ADDED TO FITRI -->
+                                    <p class="template-arabic-closing">
+                                        وَ السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ
+                                    </p>
+
+                                    <div class="mt-6 pt-6" style="border-top: 1px solid var(--border-gold);">
+                                        <p class="text-xl font-semibold">
+                                            "<span class="editable-field" contenteditable="true" id="nameField1"></span>" 
+                                            <span data-translate="andFamily">& Keluarga</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
+                                <button class="btn-action" onclick="copyText('id', 'fitri')">
+                                    Salin Text Indonesia
+                                </button>
+                                <button class="btn-action" onclick="downloadWord('id', 'fitri')">
+                                    Download WORD Indonesia
+                                </button>
+                                <button class="btn-action" onclick="copyText('en', 'fitri')">
+                                    Salin Text English
+                                </button>
+                                <button class="btn-action" onclick="downloadWord('en', 'fitri')">
+                                    Download WORD English
+                                </button>
+                                <button class="btn-action" onclick="copyText('ja', 'fitri')">
+                                    Salin Text Japan
+                                </button>
+                                <button class="btn-action" onclick="downloadWord('ja', 'fitri')">
+                                    Download WORD Japan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Idul Adha -->
+                    <div id="tab2" class="tab-content">
+                        <div class="card p-6 md:p-8">
+                            <!-- Editor Toolbar -->
+                            <div class="editor-toolbar mb-6">
+                                <select id="fontFamily2" class="toolbar-select" aria-label="Font Family">
+                                    <option value="Poppins">Poppins</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Amiri">Amiri (Arabic)</option>
+                                </select>
+                                <select id="fontSize2" class="toolbar-select" aria-label="Font Size">
+                                    <option value="12">12px</option>
+                                    <option value="14">14px</option>
+                                    <option value="16" selected>16px</option>
+                                    <option value="18">18px</option>
+                                    <option value="20">20px</option>
+                                    <option value="24">24px</option>
+                                </select>
+                                <select id="fontWeight2" class="toolbar-select" aria-label="Font Weight">
+                                    <option value="400">Regular</option>
+                                    <option value="500">Medium</option>
+                                    <option value="600">Semi Bold</option>
+                                    <option value="700">Bold</option>
+                                </select>
+                                <select id="fontStyle2" class="toolbar-select" aria-label="Font Style">
+                                    <option value="normal">Normal</option>
+                                    <option value="italic">Italic</option>
+                                </select>
+                            </div>
+
+                            <!-- Template Preview -->
+                            <div class="template-preview" id="template2Preview">
+                                <div id="template2Content" class="template-text">
+                                    <!-- Arabic Opening -->
+                                    <p class="template-arabic">
+                                        السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ
+                                    </p>
+
+                                    <p class="template-line" data-translate="weFamily">
+                                        Kami sekeluarga turut mengucapkan:
+                                    </p>
+
+                                    <p class="template-line highlight-text">
+                                        Taqabbalallahu Minna Wa Minkum, Taqabbal Ya Kariim.
+                                    </p>
+
+                                    <p class="template-line">
+                                        <span data-translate="happyEidAdha">Selamat Hari Raya Idul Adha</span> 
+                                        "<span class="editable-field" contenteditable="true" id="hijriDate2"></span>"
+                                    </p>
+
+                                    <p class="template-line" data-translate="adhaInspiration">
+                                        Semoga semangat berkurban Nabi Ibrahim AS dan keikhlasan Nabi Ismail AS senantiasa menginspirasi kita untuk terus berbagi dan mendekatkan diri kepada Allah SWT.
+                                    </p>
+
+                                    <p class="template-line" data-translate="askForgiveness">
+                                        Mohon maaf lahir & batin.
+                                    </p>
+
+                                    <p class="template-line" data-translate="adhaForgiveness">
+                                        Atas segala khilaf dan salah kami, baik yang disengaja maupun tidak disengaja. Semoga ibadah kita diterima oleh Allah SWT, dan bagi yang sedang menunaikan ibadah Haji, semoga menjadi Haji yang Mabrur.
+                                    </p>
+
+                                    <p class="template-line highlight-text">
+                                        Aamiin Yaa Robbal 'Aalamiin
+                                    </p>
+
+                                    <!-- Arabic Closing -->
+                                    <p class="template-arabic-closing">
+                                        وَ السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ
+                                    </p>
+
+                                    <div class="mt-6 pt-6" style="border-top: 1px solid var(--border-gold);">
+                                        <p class="text-xl font-semibold">
+                                            "<span class="editable-field" contenteditable="true" id="nameField2"></span>" 
+                                            <span data-translate="andFamily">& Keluarga</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
+                                <button class="btn-action" onclick="copyText('id', 'adha')">
+                                    Salin Text Indonesia
+                                </button>
+                                <button class="btn-action" onclick="downloadWord('id', 'adha')">
+                                    Download WORD Indonesia
+                                </button>
+                                <button class="btn-action" onclick="copyText('en', 'adha')">
+                                    Salin Text English
+                                </button>
+                                <button class="btn-action" onclick="downloadWord('en', 'adha')">
+                                    Download WORD English
+                                </button>
+                                <button class="btn-action" onclick="copyText('ja', 'adha')">
+                                    Salin Text Japan
+                                </button>
+                                <button class="btn-action" onclick="downloadWord('ja', 'adha')">
+                                    Download WORD Japan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Back Button -->
+                    <div class="text-center mt-6">
+                        <button id="backBtn" class="btn-secondary" data-translate="backButton">
+                            Kembali ke Halaman Utama
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ==================== INITIALIZATION ====================
+        let currentLang = 'id';
+        let userName = '';
+        
+        // Translation Dictionary
+        const translations = {
+            id: {
+                welcomeTitle: 'Selamat Datang',
+                welcomeSubtitle: 'Buat kartu ucapan Lebaran yang personal',
+                yourName: 'NAMA KAMU',
+                namePlaceholder: 'Masukkan nama lengkap Anda...',
+                startButton: 'Mulai Buat Kartu',
+                tab1Title: 'TEMPLATE HARI RAYA IDUL FITRI',
+                tab2Title: 'TEMPLATE HARI RAYA IDUL ADHA',
+                weFamily: 'Kami sekeluarga turut mengucapkan:',
+                happyEidFitri: 'Selamat Hari Raya Idul Fitri',
+                happyEidAdha: 'Selamat Hari Raya Idul Adha',
+                askForgiveness: 'Mohon maaf lahir & batin.',
+                forgivenessTextFitri: 'Atas segala khilaf & salah kami, baik yang disengaja maupun tidak disengaja, semoga puasa kita diterima Allah swt dan diberi kesempatan bisa bertemu Romadhon mendatang.',
+                adhaInspiration: 'Semoga semangat berkurban Nabi Ibrahim AS dan keikhlasan Nabi Ismail AS senantiasa menginspirasi kita untuk terus berbagi dan mendekatkan diri kepada Allah SWT.',
+                adhaForgiveness: 'Atas segala khilaf dan salah kami, baik yang disengaja maupun tidak disengaja. Semoga ibadah kita diterima oleh Allah SWT, dan bagi yang sedang menunaikan ibadah Haji, semoga menjadi Haji yang Mabrur.',
+                andFamily: '& Keluarga',
+                backButton: 'Kembali ke Halaman Utama',
+                copiedSuccess: 'Teks berhasil disalin!',
+                downloadSuccess: 'File berhasil didownload!'
+            },
+            en: {
+                welcomeTitle: 'Welcome',
+                welcomeSubtitle: 'Create personalized Eid greeting cards',
+                yourName: 'YOUR NAME',
+                namePlaceholder: 'Enter your full name...',
+                startButton: 'Start Creating Card',
+                tab1Title: 'EID AL-FITRI TEMPLATE',
+                tab2Title: 'EID AL-ADHA TEMPLATE',
+                weFamily: 'We and our family would like to wish:',
+                happyEidFitri: 'Happy Eid Al-Fitr',
+                happyEidAdha: 'Happy Eid Al-Adha',
+                askForgiveness: 'We ask for forgiveness, physically and spiritually.',
+                forgivenessTextFitri: 'For all our mistakes and wrongdoings, whether intentional or not, may our fasting be accepted by Allah SWT and may we be given the opportunity to meet the next Ramadan.',
+                adhaInspiration: 'May the sacrificial spirit of Prophet Ibrahim AS and the sincerity of Prophet Ismail AS always inspire us to continue sharing and drawing closer to Allah SWT.',
+                adhaForgiveness: 'For all our mistakes and wrongdoings, whether intentional or not. May our worship be accepted by Allah SWT, and for those performing Hajj, may it be a Hajj Mabrur.',
+                andFamily: '& Family',
+                backButton: 'Back to Main Page',
+                copiedSuccess: 'Text copied successfully!',
+                downloadSuccess: 'File downloaded successfully!'
+            },
+            ja: {
+                welcomeTitle: 'ようこそ',
+                welcomeSubtitle: 'パーソナライズされたイードのグリーティングカードを作成',
+                yourName: 'お名前',
+                namePlaceholder: 'フルネームを入力してください...',
+                startButton: 'カード作成を開始',
+                tab1Title: 'イード・アル・フィトル テンプレート',
+                tab2Title: 'イード・アル・アドハ テンプレート',
+                weFamily: '私たち家族はお祝いを申し上げます：',
+                happyEidFitri: 'イード・アル・フィトルおめでとうございます',
+                happyEidAdha: 'イード・アル・アドハおめでとうございます',
+                askForgiveness: '心からお許しください。',
+                forgivenessTextFitri: '意図的であれ無意識であれ、私たちのすべての過ちと間違いについて、私たちの断食がアッラーに受け入れられ、次のラマダンに会う機会が与えられることを願っています。',
+                adhaInspiration: '預言者イブラーヒームの犠牲の精神と預言者イスマーイールの誠実さが、私たちが共有し続け、アッラーに近づくことを常に鼓舞してくれることを願っています。',
+                adhaForgiveness: '意図的であれ無意識であれ、私たちのすべての過ちと間違いについて。私たちの礼拝がアッラーに受け入れられることを願っています。ハッジを行っている方々にとって、マブルールなハッジになりますように。',
+                andFamily: 'と家族',
+                backButton: 'メインページに戻る',
+                copiedSuccess: 'テキストがコピーされました！',
+                downloadSuccess: 'ファイルがダウンロードされました！'
+            }
+        };
+
+        // ==================== BACKGROUND ANIMATION ====================
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animationId = null;
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            createParticles();
+        }
+
+        function createParticles() {
+            particles = [];
+            const count = Math.min(60, Math.floor(window.innerWidth / 20));
+            
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 3 + 1,
+                    speedX: (Math.random() - 0.5) * 0.3,
+                    speedY: (Math.random() - 0.5) * 0.3,
+                    opacity: Math.random() * 0.5 + 0.2,
+                    type: Math.random() > 0.6 ? 'star' : 'dot'
+                });
+            }
+        }
+
+        function drawParticle(p) {
+            ctx.save();
+            ctx.globalAlpha = p.opacity;
+            
+            if (p.type === 'star') {
+                ctx.fillStyle = '#d4a855';
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                    const x = p.x + Math.cos(angle) * p.size * 2;
+                    const y = p.y + Math.sin(angle) * p.size * 2;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                ctx.fillStyle = p.size > 2 ? '#d4a855' : '#a8c5b0';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach(p => {
+                p.x += p.speedX;
+                p.y += p.speedY;
+                
+                if (p.x < 0) p.x = canvas.width;
+                if (p.x > canvas.width) p.x = 0;
+                if (p.y < 0) p.y = canvas.height;
+                if (p.y > canvas.height) p.y = 0;
+                
+                p.opacity += (Math.random() - 0.5) * 0.02;
+                p.opacity = Math.max(0.1, Math.min(0.7, p.opacity));
+                
+                drawParticle(p);
+            });
+            
+            animationId = requestAnimationFrame(animateParticles);
+        }
+
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        if (!prefersReducedMotion) {
+            initCanvas();
+            animateParticles();
+            window.addEventListener('resize', initCanvas);
+        }
+
+        // ==================== TIME & DATE FUNCTIONS ====================
+        function updateLiveClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('liveClock').textContent = timeStr;
+        }
+
+        function getHijriDate() {
+            const today = new Date();
+            const hijriMonths = [
+                'Muharram', 'Safar', 'Rabiul Awal', 'Rabiul Akhir',
+                'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Syaban',
+                'Ramadhan', 'Syawal', 'Dzulqaidah', 'Dzulhijjah'
+            ];
+            
+            const julianDay = Math.floor((today - new Date(1970, 0, 1)) / 86400000) + 2440587.5;
+            const l = Math.floor(julianDay - 1948439.5) + 10632;
+            const n = Math.floor((l - 1) / 10631);
+            const l2 = l - 10631 * n + 354;
+            const j = Math.floor((10985 - l2) / 5316) * Math.floor((50 * l2) / 17719) + Math.floor(l2 / 5670) * Math.floor((43 * l2) / 15238);
+            const l3 = l2 - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) - Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
+            const month = Math.floor((24 * l3) / 709);
+            const day = l3 - Math.floor((709 * month) / 24);
+            const year = 30 * n + j - 30;
+            
+            return {
+                day: day,
+                month: hijriMonths[month - 1] || 'Syawal',
+                year: year
+            };
+        }
+
+        function getHijriDateString() {
+            const hijri = getHijriDate();
+            return `${hijri.day} ${hijri.month} ${hijri.year} H`;
+        }
+
+        function updateHijriDate() {
+            const hijri = getHijriDate();
+            const hijriStr = getHijriDateString();
+            document.getElementById('hijriDate').textContent = hijriStr;
+            
+            const hijriFields = ['hijriDate1', 'hijriDate2'];
+            hijriFields.forEach(id => {
+                const field = document.getElementById(id);
+                if (field && !field.textContent.trim()) {
+                    field.textContent = hijriStr;
+                }
+            });
+        }
+
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+        updateHijriDate();
+
+        // ==================== TRANSLATION FUNCTIONS ====================
+        function applyTranslation(lang) {
+            currentLang = lang;
+            const trans = translations[lang];
+            
+            document.querySelectorAll('[data-translate]').forEach(el => {
+                const key = el.getAttribute('data-translate');
+                if (trans[key]) {
+                    el.textContent = trans[key];
+                }
+            });
+            
+            document.querySelectorAll('[data-placeholder-id]').forEach(el => {
+                const key = el.getAttribute('data-placeholder-id');
+                if (trans[key]) {
+                    el.placeholder = trans[key];
+                }
+            });
+            
+            document.documentElement.lang = lang;
+        }
+
+        document.getElementById('langSelect').addEventListener('change', (e) => {
+            applyTranslation(e.target.value);
+        });
+
+        // ==================== PAGE NAVIGATION ====================
+        function showPage(pageNum) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page${pageNum}`).classList.add('active');
+        }
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            userName = document.getElementById('userName').value.trim();
+            if (!userName) {
+                userName = 'Guest';
+            }
+            
+            document.getElementById('displayName').textContent = userName;
+            document.getElementById('nameField1').textContent = userName;
+            document.getElementById('nameField2').textContent = userName;
+            
+            showPage(2);
+        });
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            showPage(1);
+        });
+
+        // ==================== TAB FUNCTIONALITY ====================
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ==================== TEXT EDITOR TOOLBAR ====================
+        function setupToolbar(tabNum) {
+            const fontFamily = document.getElementById(`fontFamily${tabNum}`);
+            const fontSize = document.getElementById(`fontSize${tabNum}`);
+            const fontWeight = document.getElementById(`fontWeight${tabNum}`);
+            const fontStyle = document.getElementById(`fontStyle${tabNum}`);
+            const content = document.getElementById(`template${tabNum}Content`);
+            
+            const updateStyle = () => {
+                content.style.fontFamily = fontFamily.value;
+                content.style.fontSize = fontSize.value + 'px';
+                content.style.fontWeight = fontWeight.value;
+                content.style.fontStyle = fontStyle.value;
+            };
+
+            [fontFamily, fontSize, fontWeight, fontStyle].forEach(select => {
+                if (select) {
+                    select.addEventListener('change', updateStyle);
+                }
+            });
+        }
+
+        setupToolbar(1);
+        setupToolbar(2);
+
+        // ==================== SYNCHRONIZE NAME ACROSS FIELDS ====================
+        document.getElementById('displayName').addEventListener('input', function() {
+            const name = this.textContent.trim();
+            document.getElementById('nameField1').textContent = name;
+            document.getElementById('nameField2').textContent = name;
+        });
+
+        // ==================== TEMPLATE CONTENT GENERATORS ====================
+        function getTemplateContent(lang, type) {
+            const trans = translations[lang];
+            const name1 = document.getElementById('nameField1').textContent.trim() || userName;
+            const name2 = document.getElementById('nameField2').textContent.trim() || userName;
+            const hijri1 = document.getElementById('hijriDate1').textContent.trim() || getHijriDateString();
+            const hijri2 = document.getElementById('hijriDate2').textContent.trim() || getHijriDateString();
+
+            // Arabic texts that should NOT be translated
+            const arabicOpening = 'السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ';
+            const arabicClosing = 'وَ السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ';
+            const taqobalFitri = 'Taqobbalaahu Minna Wa Minkum Taqobbal Yaa Kariim.';
+            const taqobalAdha = 'Taqabbalallahu Minna Wa Minkum, Taqabbal Ya Kariim.';
+            const minalAidin = "Minal 'Aidin Wal Faizin.";
+            const aamiin = "Aamiin Yaa Robbal'aalamiin";
+
+            if (type === 'fitri') {
+                if (lang === 'id') {
+                    return `${arabicOpening}
+
+Kami sekeluarga turut mengucapkan:
+
+ ${taqobalFitri}
+Selamat Hari Raya Idul Fitri "${hijri1}".
+ ${minalAidin}
+Mohon maaf lahir & batin.
+Atas segala khilaf & salah kami, baik yang disengaja maupun tidak disengaja, semoga puasa kita diterima Allah swt dan diberi kesempatan bisa bertemu Romadhon mendatang.
+ ${aamiin}
+
+ ${arabicClosing}
+
+"${name1}" & Keluarga`;
+                } else if (lang === 'en') {
+                    return `${arabicOpening}
+
+We and our family would like to wish:
+
+ ${taqobalFitri}
+Happy Eid Al-Fitr "${hijri1}".
+ ${minalAidin}
+We ask for forgiveness, physically and spiritually.
+For all our mistakes and wrongdoings, whether intentional or not, may our fasting be accepted by Allah SWT and may we be given the opportunity to meet the next Ramadan.
+ ${aamiin}
+
+ ${arabicClosing}
+
+"${name1}" & Family`;
+                } else if (lang === 'ja') {
+                    return `${arabicOpening}
+
+私たち家族はお祝いを申し上げます：
+
+ ${taqobalFitri}
+イード・アル・フィトルおめでとうございます "${hijri1}"。
+ ${minalAidin}
+心からお許しください。
+意図的であれ無意識であれ、私たちのすべての過ちと間違いについて、私たちの断食がアッラーに受け入れられ、次のラマダンに会う機会が与えられることを願っています。
+ ${aamiin}
+
+ ${arabicClosing}
+
+"${name1}" と家族`;
+                }
+            } else if (type === 'adha') {
+                if (lang === 'id') {
+                    return `${arabicOpening}
+
+Kami sekeluarga turut mengucapkan:
+
+ ${taqobalAdha}
+Selamat Hari Raya Idul Adha "${hijri2}".
+Semoga semangat berkurban Nabi Ibrahim AS dan keikhlasan Nabi Ismail AS senantiasa menginspirasi kita untuk terus berbagi dan mendekatkan diri kepada Allah SWT.
+Mohon maaf lahir & batin.
+Atas segala khilaf dan salah kami, baik yang disengaja maupun tidak disengaja. Semoga ibadah kita diterima oleh Allah SWT, dan bagi yang sedang menunaikan ibadah Haji, semoga menjadi Haji yang Mabrur.
+ ${aamiin}
+
+ ${arabicClosing}
+
+"${name2}" & Keluarga`;
+                } else if (lang === 'en') {
+                    return `${arabicOpening}
+
+We and our family would like to wish:
+
+ ${taqobalAdha}
+Happy Eid Al-Adha "${hijri2}".
+May the sacrificial spirit of Prophet Ibrahim AS and the sincerity of Prophet Ismail AS always inspire us to continue sharing and drawing closer to Allah SWT.
+We ask for forgiveness, physically and spiritually.
+For all our mistakes and wrongdoings, whether intentional or not. May our worship be accepted by Allah SWT, and for those performing Hajj, may it be a Hajj Mabrur.
+ ${aamiin}
+
+ ${arabicClosing}
+
+"${name2}" & Family`;
+                } else if (lang === 'ja') {
+                    return `${arabicOpening}
+
+私たち家族はお祝いを申し上げます：
+
+ ${taqobalAdha}
+イード・アル・アドハおめでとうございます "${hijri2}"。
+預言者イブラーヒームの犠牲の精神と預言者イスマーイールの誠実さが、私たちが共有し続け、アッラーに近づくことを常に鼓舞してくれることを願っています。
+心からお許しください。
+意図的であれ無意識であれ、私たちのすべての過ちと間違いについて。私たちの礼拝がアッラーに受け入れられることを願っています。ハッジを行っている方々にとって、マブルールなハッジになりますように。
+ ${aamiin}
+
+ ${arabicClosing}
+
+"${name2}" と家族`;
+                }
+            }
+            return '';
+        }
+
+        // ==================== COPY TEXT FUNCTION ====================
+        async function copyText(lang, type) {
+            const content = getTemplateContent(lang, type);
+            
+            try {
+                await navigator.clipboard.writeText(content);
+                showToast(translations[currentLang].copiedSuccess);
+            } catch (err) {
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast(translations[currentLang].copiedSuccess);
+            }
+        }
+
+        // ==================== DOWNLOAD WORD FUNCTION ====================
+        async function downloadWord(lang, type) {
+            const content = getTemplateContent(lang, type);
+            const name = type === 'fitri' 
+                ? document.getElementById('nameField1').textContent.trim() || userName
+                : document.getElementById('nameField2').textContent.trim() || userName;
+            
+            const title = type === 'fitri' ? 'Eid_Al_Fitri' : 'Eid_Al_Adha';
+            const langSuffix = lang === 'id' ? 'Indonesia' : (lang === 'en' ? 'English' : 'Japan');
+            const filename = `${title}_${name.replace(/\s+/g, '_')}_${langSuffix}.doc`;
+
+            try {
+                const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
+                
+                const paragraphs = content.split('\n\n').map(para => {
+                    const isArabic = /[\u0600-\u06FF]/.test(para);
+                    return new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 },
+                        children: [
+                            new TextRun({
+                                text: para,
+                                font: isArabic ? 'Arial Unicode MS' : 'Arial',
+                                size: isArabic ? 32 : 24,
+                                bold: para.includes('Taqobbal') || para.includes('Aamiin')
+                            })
+                        ]
+                    });
+                });
+
+                const doc = new Document({
+                    sections: [{
+                        properties: {},
+                        children: paragraphs
+                    }]
+                });
+
+                const blob = await Packer.toBlob(doc);
+                saveAs(blob, filename);
+                showToast(translations[currentLang].downloadSuccess);
+            } catch (err) {
+                const htmlContent = `
+                    <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+                          xmlns:w='urn:schemas-microsoft-com:office:word' 
+                          xmlns='http://www.w3.org/TR/REC-html40'>
+                    <head>
+                        <meta charset='utf-8'>
+                        <style>
+                            body { font-family: Arial; font-size: 12pt; text-align: center; }
+                            .arabic { font-family: Arial Unicode MS; font-size: 16pt; direction: rtl; }
+                            .title { font-size: 14pt; font-weight: bold; }
+                        </style>
+                    </head>
+                    <body>
+                        ${content.split('\n\n').map(p => {
+                            const isArabic = /[\u0600-\u06FF]/.test(p);
+                            const isTitle = p.includes('Taqobbal') || p.includes('Aamiin');
+                            return `<p class="${isArabic ? 'arabic' : ''} ${isTitle ? 'title' : ''}">${p.replace(/\n/g, '<br>')}</p>`;
+                        }).join('')}
+                    </body>
+                    </html>
+                `;
+                
+                const blob = new Blob([htmlContent], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast(translations[currentLang].downloadSuccess);
+            }
+        }
+
+        // ==================== TOAST NOTIFICATION ====================
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ==================== KEYBOARD NAVIGATION ====================
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.getElementById('page1').classList.contains('active')) {
+                const userNameInput = document.getElementById('userName');
+                if (document.activeElement === userNameInput) {
+                    document.getElementById('startBtn').click();
+                }
+            }
+        });
+
+        // ==================== INITIAL SETUP ====================
+        const initialHijri = getHijriDateString();
+        document.getElementById('hijriDate1').textContent = initialHijri;
+        document.getElementById('hijriDate2').textContent = initialHijri;
+
+        applyTranslation('id');
+    </script>
+</body>
+</html>
